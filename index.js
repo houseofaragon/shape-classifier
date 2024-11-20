@@ -1,74 +1,57 @@
-// Global variables
-let shapeClassifier;
-let canvas;
-let inputImage;
+// Initialize the Image Classifier method with DoodleNet.
+let classifier;
+
+// Two variable to hold the label and confidence of the result
+let labelSpan;
+let confidenceSpan;
 let clearButton;
-let guess;
-let confidence;
+let canvas;
 
-// P5.js functions
-function setup() {
-  // Canvas setup
-  canvas = createCanvas(400, 400);
-  canvas.parent("p5Canvas");
-  background(255);
-
-  // Clear btn
-  clearButton = document.getElementById("deleteBtn");
-  clearButton.addEventListener("click", () => {
-    background(255);
-  });
-
-  // ML Setup
-  const options = {
-    inputs: [64, 64, 4],
-    task: "imageClassification",
-  };
-  const modelDetails = {
-    model: "model/model.json",
-    metadata: "model/model_meta.json",
-    weights: "model/modelweights.bin",
-  };
-
-  shapeClassifier = ml5.neuralNetwork(options);
-  inputImage = createGraphics(64, 64);
-  shapeClassifier.load(modelDetails, modelLoaded);
+function preload() {
+  classifier = ml5.imageClassifier('DoodleNet');
 }
+
+function setup() {
+  canvas = createCanvas(280, 280);
+  background(255);
+  classifier.classify(canvas, gotResult);
+
+  // Create a clear canvas button
+  clearButton = select("#clearBtn");
+  clearButton.mousePressed(clearCanvas);
+
+  // Create 'label' and 'confidence' div to hold results
+  labelSpan = select("#label");
+  confidenceSpan = select("#confidence");
+}
+
+
+function clearCanvas() {
+  background(255);
+}
+
 
 function draw() {
+  strokeWeight(16);
+  stroke(0);
   if (mouseIsPressed) {
-    strokeWeight(8);
-    line(mouseX, mouseY, pmouseX, pmouseY);
+    line(pmouseX, pmouseY, mouseX, mouseY);
   }
 }
 
-// Helper functions
-function modelLoaded() {
-  console.log("Ready!");
-  classifyImage();
-}
 
-function classifyImage() {
-  inputImage.copy(canvas, 0, 0, 400, 400, 0, 0, 64, 64);
-  shapeClassifier.classify(
-    {
-      image: inputImage,
-    },
-    gotResults
-  );
-}
-
-function gotResults(err, results) {
-  if (err) {
-    console.error(err);
+// A function to run when we get any errors and the results
+function gotResult(error, results) {
+  // Display error in the console
+  if (error) {
+    console.error(error);
     return;
   }
-
-  guess = results[0].label;
-  confidence = nf(100 * results[0].confidence, 2, 1);
-
-  document.getElementById(
-    "result"
-  ).innerText = `Guess: ${guess} with ${confidence}% of confidence`;
-  classifyImage();
+  // The results are in an array ordered by confidence.
+  // console.log(results);
+  // Show the first label and confidence
+  labelSpan.html(results[0].label);
+  confidenceSpan.html(floor(100 * results[0].confidence));
+  classifier.classify(canvas, gotResult);
 }
+
